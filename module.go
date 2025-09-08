@@ -21,6 +21,7 @@ func ForRoot(config es.Config) core.Modules {
 			Name:  ELASTICSEARCH,
 			Value: client,
 		})
+		esModule.Export(ELASTICSEARCH)
 
 		return esModule
 	}
