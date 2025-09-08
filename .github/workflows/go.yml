@@ -28,12 +28,12 @@ jobs:
           # This is required for a single-node setup for testing
           discovery.type: single-node
           xpack.security.enabled: false
-        # The health check waits for Elasticsearch to be ready before running tests
-        healthcheck:
-          test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?wait_for_status=yellow"]
-          interval: 10s
-          timeout: 5s
-          retries: 5
+        # # The health check waits for Elasticsearch to be ready before running tests
+        # healthcheck:
+        #   test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+        #   interval: 10s
+        #   timeout: 5s
+        #   retries: 5
     
     steps:
     - uses: actions/checkout@v4
@@ -48,6 +48,18 @@ jobs:
 
     - name: Build
       run: go build -v ./...
+
+    - name: Wait for Elasticsearch to be ready
+      if: steps.changes.outputs.should_run == 'true'
+      run: |
+        for i in {1..10}; do
+          if nc -z localhost 9200; then
+            echo "Elasticsearch is up and running"
+            break
+          fi
+          echo "Waiting for Elasticsearch..."
+          sleep 5
+        done
 
     - name: Run tests with secrets and Elasticsearch
       # Use the 'API_KEY' secret from your repository settings and set the Elasticsearch host
