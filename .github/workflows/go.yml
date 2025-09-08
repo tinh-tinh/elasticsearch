@@ -1,0 +1,57 @@
+# This workflow will build a golang project and run tests against an Elasticsearch service.
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.22.x' ]
+    
+    # Define Elasticsearch as a service
+    services:
+      elasticsearch:
+        # Use a stable version of the official Elasticsearch Docker image
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+        ports:
+          - 9200:9200
+        env:
+          # This is required for a single-node setup for testing
+          discovery.type: single-node
+          xpack.security.enabled: false
+        # The health check waits for Elasticsearch to be ready before running tests
+        healthcheck:
+          test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22.0'
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Run tests with secrets and Elasticsearch
+      # Use the 'API_KEY' secret from your repository settings and set the Elasticsearch host
+      env: 
+        API_KEY: ${{ secrets.API_KEY }}
+        ELASTICSEARCH_URL: http://localhost:9200
+      run: go test -v ./...
